@@ -1,55 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import Chatbox from "../components/Chatbox";
 import DeleteConfirmationDialog from "../components/DeleteConfirmationDialog";
 import { Conversation, Message } from "../types/conversation";
-import { IconButton } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
 import api from "../utils/api";
+import Header from "@/components/Header";
 
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
-  const [conversationToDelete, setConversationToDelete] = useState<number | null>(
-    null
-  );
+  const [conversationToDelete, setConversationToDelete] = useState<
+    number | null
+  >(null);
   const [isBotTyping, setIsBotTyping] = useState<boolean>(false);
+  const [loadingConversations, setLoadingConversations] =
+    useState<boolean>(true);
+  const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
 
- 
+  const messageCache = useRef<{ [key: number]: Message[] }>({});
+
   useEffect(() => {
     const fetchConversations = async () => {
+      setLoadingConversations(true);
       try {
         const response = await api.get<Conversation[]>("/conversations");
         setConversations(response.data);
-        console.log(response.data);
         if (response.data.length > 0) setSelectedConvId(response.data[0].id);
       } catch (error) {
         console.error("Error fetching conversations:", error);
+      } finally {
+        setLoadingConversations(false);
       }
     };
 
     fetchConversations();
   }, []);
 
-  // Fetch messages for a conversation
   useEffect(() => {
     const fetchMessages = async () => {
       if (selectedConvId !== null) {
-        try {
-          const response = await api.get<Message[]>(
-            `/conversations/${selectedConvId}/messages`
-          );
+        if (messageCache.current[selectedConvId]) {
+          const cachedMessages = messageCache.current[selectedConvId];
           setConversations((prev) =>
             prev.map((conv) =>
-              conv.id === selectedConvId ? { ...conv, messages: response.data } : conv
+              conv.id === selectedConvId
+                ? { ...conv, messages: cachedMessages }
+                : conv
             )
           );
-        } catch (error) {
-          console.error("Error fetching messages:", error);
+        } else {
+          setLoadingMessages(true);
+          try {
+            const response = await api.get<Message[]>(
+              `/conversations/${selectedConvId}/messages`
+            );
+
+            messageCache.current[selectedConvId] = response.data;
+
+            setConversations((prev) =>
+              prev.map((conv) =>
+                conv.id === selectedConvId
+                  ? { ...conv, messages: response.data }
+                  : conv
+              )
+            );
+          } catch (error) {
+            console.error("Error fetching messages:", error);
+          } finally {
+            setLoadingMessages(false);
+          }
         }
       }
     };
@@ -57,30 +80,32 @@ export default function Home() {
     fetchMessages();
   }, [selectedConvId]);
 
-  // Add a new conversation
   const addConversation = async () => {
     try {
       const response = await api.post<Conversation>("/conversations", {
         name: `Conversation ${conversations.length + 1}`,
       });
       setConversations([response.data, ...conversations]);
+
       setSelectedConvId(response.data.id);
     } catch (error) {
       console.error("Error adding conversation:", error);
     }
   };
 
-  // Confirm deletion
   const confirmDelete = (id: number) => {
     setConversationToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  // Delete a conversation
   const deleteConversation = async () => {
     if (conversationToDelete !== null) {
       try {
         await api.delete(`/conversations/${conversationToDelete}`);
+
+       
+        delete messageCache.current[conversationToDelete];
+
         setConversations((prev) =>
           prev.filter((conv) => conv.id !== conversationToDelete)
         );
@@ -93,7 +118,6 @@ export default function Home() {
     }
   };
 
-  // Send a message
   const sendMessage = async (text: string) => {
     if (selectedConvId !== null) {
       try {
@@ -103,34 +127,45 @@ export default function Home() {
           conversationId: selectedConvId,
         });
 
+        
+        const updatedMessages = [
+          ...(messageCache.current[selectedConvId] || []),
+          response.data,
+        ];
+        messageCache.current[selectedConvId] = updatedMessages;
+
         setConversations((prev) =>
           prev.map((conv) =>
             conv.id === selectedConvId
-              ? { ...conv, messages: [...conv.messages, response.data] }
+              ? { ...conv, messages: updatedMessages }
               : conv
           )
         );
 
-        // Show typing indicator
         setIsBotTyping(true);
 
-        // Simulate bot response
         setTimeout(async () => {
-          const botResponse = await api.post<Message>("/conversations/message", {
-            text: "This is an AI generated response.",
-            sender: "bot",
-            conversationId: selectedConvId,
-          });
+          const botResponse = await api.post<Message>(
+            "/conversations/message",
+            {
+              text: "This is an AI generated response.",
+              sender: "bot",
+              conversationId: selectedConvId,
+            }
+          );
+
+          const updatedBotMessages = [...updatedMessages, botResponse.data];
+          messageCache.current[selectedConvId] = updatedBotMessages;
 
           setConversations((prev) =>
             prev.map((conv) =>
               conv.id === selectedConvId
-                ? { ...conv, messages: [...conv.messages, botResponse.data] }
+                ? { ...conv, messages: updatedBotMessages }
                 : conv
             )
           );
 
-          setIsBotTyping(false); // Hide typing indicator
+          setIsBotTyping(false);
         }, 2000);
       } catch (error) {
         console.error("Error sending message:", error);
@@ -138,43 +173,46 @@ export default function Home() {
     }
   };
 
-  // Get the currently selected conversation
   const currentConversation =
     conversations.find((conv) => conv.id === selectedConvId) || null;
 
   return (
-    <div className="flex h-screen bg-[#FEF7FF]">
-      {/* Sidebar */}
-      <Sidebar
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        conversations={conversations}
-        onSelect={(id) => {
-          setSelectedConvId(id);
-          setDrawerOpen(false);
-        }}
-        onDelete={confirmDelete}
-        onAdd={addConversation}
-        selectedConversationId={selectedConvId || 1}
-      />
+    <div className="flex flex-col h-screen bg-[#FEF7FF]">
+      <Header />
 
-      {/* Chatbox */}
-      <div className="flex-1">
-        <Chatbox
-          messages={currentConversation?.messages || []}
-          onSend={sendMessage}
-          isBotTyping={isBotTyping}
-          onMenuClick={() => setDrawerOpen(true)} // Open drawer for small screens
+      <div className="flex flex-1 ">
+        <Sidebar
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          conversations={conversations}
+          onSelect={(id) => {
+            setSelectedConvId(id);
+            setDrawerOpen(false);
+          }}
+          onDelete={confirmDelete}
+          onAdd={addConversation}
+          selectedConversationId={selectedConvId || 1}
+          loading={loadingConversations}
         />
+
+        <div className="flex-1">
+          <Chatbox
+            messages={currentConversation?.messages || []}
+            onSend={sendMessage}
+            isBotTyping={isBotTyping}
+            onMenuClick={() => setDrawerOpen(true)}
+            loading={loadingMessages && loadingConversations}
+          />
+        </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={deleteConversation}
         conversationName={
-          conversations.find((conv) => conv.id === conversationToDelete)?.name || ""
+          conversations.find((conv) => conv.id === conversationToDelete)
+            ?.name || ""
         }
       />
     </div>

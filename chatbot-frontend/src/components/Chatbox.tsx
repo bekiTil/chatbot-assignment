@@ -1,23 +1,38 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, AppBar, Toolbar, Typography, Avatar, IconButton, InputBase, SvgIcon } from "@mui/material";
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  Typography,
+  Avatar,
+  IconButton,
+  InputBase,
+  SvgIcon,
+  CircularProgress,
+} from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { Message } from "../types/conversation";
 
-import { SendOutlined } from "@mui/icons-material";
-import sendIcon from '../../public/send.svg'
+import sendIcon from "../../public/send.svg";
+import TypingIndicator from "./TypingIndicator";
 
 type ChatboxProps = {
   messages: Message[];
   onSend: (text: string) => void;
   isBotTyping: boolean;
-  onMenuClick: () => void; // Prop to trigger opening the Drawer
+  onMenuClick: () => void;
+  loading: boolean;
 };
 
-const Chatbox: React.FC<ChatboxProps> = ({ messages, onSend, isBotTyping, onMenuClick }) => {
+const Chatbox: React.FC<ChatboxProps> = ({
+  messages,
+  onSend,
+  isBotTyping,
+  onMenuClick,
+  loading,
+}) => {
   const [input, setInput] = useState<string>("");
-  console.log(messages);
 
-  // Reference to the message container
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
   const handleSend = () => {
@@ -27,7 +42,6 @@ const Chatbox: React.FC<ChatboxProps> = ({ messages, onSend, isBotTyping, onMenu
     }
   };
 
-  // Scroll to the bottom of the messages whenever `messages` changes
   useEffect(() => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -35,75 +49,133 @@ const Chatbox: React.FC<ChatboxProps> = ({ messages, onSend, isBotTyping, onMenu
   }, [messages]);
 
   return (
-    <Box className="flex flex-col h-screen p-5">
-      {/* Outer Box to contain both message area and input */}
-      <Box sx={{ borderRadius: "40px" }} className="h-full flex flex-col bg-white">
-        {/* App Bar */}
-        <AppBar position="static" color="transparent" elevation={0}>
+    <Box
+      className="flex flex-col h-full p-5"
+      sx={{ maxHeight: "calc(100vh - 100px)" }}
+    >
+      <Box
+        sx={{ borderRadius: "40px" }}
+        className="h-full flex flex-col bg-white"
+      >
+        <AppBar
+          position="static"
+          color="transparent"
+          elevation={0}
+          sx={{ borderBottom: "1px solid #E0E0E0" }}
+        >
           <Toolbar className="flex justify-between">
             <div className="flex items-center">
-              <Avatar alt="Chatbot" src="/chatbot-avatar.png" className="mr-2" />
+              <Avatar
+                alt="Chatbot"
+                src="../../chatbot-avatar.svg"
+                className="mr-2"
+              />
               <Typography variant="h6" color="inherit">
                 Chatbot
               </Typography>
             </div>
-            {/* Menu Icon for Small Screens */}
-            <IconButton edge="end" color="inherit" aria-label="menu" onClick={onMenuClick} className="lg:hidden">
+            <IconButton
+              edge="end"
+              color="inherit"
+              aria-label="menu"
+              onClick={onMenuClick}
+              className="lg:hidden"
+            >
               <MenuIcon />
             </IconButton>
           </Toolbar>
         </AppBar>
 
-        {/* Message Area */}
         <Box
           className="flex-1 overflow-y-auto p-4"
           sx={{
-            scrollbarWidth: "none", // Hides scrollbar in Firefox
-            "&::-webkit-scrollbar": { display: "none" }, // Hides scrollbar in WebKit-based browsers
+            maxHeight: "calc(100vh - 300px)",
+            scrollbarWidth: "none", 
+            "&::-webkit-scrollbar": { display: "none" }, 
           }}
         >
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`mb-2 ${
-                msg.sender === "user" ? "text-right" : "text-left"
-              }`}
-            >
-              <span
-                className={`inline-block px-4 py-2 rounded-lg ${
-                  msg.sender === "user"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200 text-black"
-                }`}
-              >
-                {msg.text}
-              </span>
-            </div>
-          ))}
-           {isBotTyping && (
-          <div className="flex items-center justify-start">
-            <div className="bg-gray-200 rounded-lg px-4 py-2 text-black">
-              <span>...</span>
-            </div>
-          </div>
-        )}
-          {/* Empty div to ensure scrolling to the bottom */}
-          <div ref={messageEndRef}></div>
+          {loading ? (
+            <Box className="flex justify-center items-center h-full">
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex items-start mb-4 ${
+                    msg.sender === "user" ? "flex-row-reverse" : "flex-row"
+                  }`}
+                >
+                  <Avatar
+                    alt={msg.sender === "user" ? "User" : "Chatbot"}
+                    src={
+                      msg.sender === "user"
+                        ? "../../user-avatar.svg"
+                        : "../../chatbot-avatar.svg"
+                    }
+                    sx={{
+                      width: 40,
+                      height: 40,
+                    }}
+                  />
+
+                 
+                  <div
+                    className={`max-w-xs px-4 py-2 rounded-lg ${
+                      msg.sender === "user"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200 text-black"
+                    }`}
+                    style={{
+                      marginRight: msg.sender === "user" ? "10px" : "0", 
+                      marginLeft: msg.sender === "bot" ? "10px" : "0", 
+                    }}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+
+              {isBotTyping && (
+                <div className="flex items-center justify-start">
+                  <Avatar
+                    src="../../chatbot-avatar.svg"
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      marginRight: "10px",
+                    }}
+                  />
+                  <div className="bg-gray-200 rounded-lg px-4 py-2 text-black">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
+            
+              <div ref={messageEndRef}></div>
+            </>
+          )}
         </Box>
 
-        {/* Input Area */}
-        <InputArea   disabled={isBotTyping} value={input} onChange={setInput} onSend={handleSend} />
+       
+        <InputArea
+          disabled={isBotTyping}
+          value={input}
+          onChange={setInput}
+          onSend={handleSend}
+        />
       </Box>
     </Box>
   );
 };
 
-const InputArea: React.FC<{ value: string; disabled:boolean, onChange: (e: string) => void; onSend: () => void }> = ({
-  value,
-  disabled=false,
-  onChange,
-  onSend,
-}) => {
+const InputArea: React.FC<{
+  value: string;
+  disabled: boolean;
+  onChange: (e: string) => void;
+  onSend: () => void;
+}> = ({ value, disabled = false, onChange, onSend }) => {
   return (
     <Box
       className="p-4 m-4  flex items-center bg-[#ECE6F0]"
@@ -111,7 +183,7 @@ const InputArea: React.FC<{ value: string; disabled:boolean, onChange: (e: strin
         borderRadius: "40px",
       }}
     >
-      {/* Input field */}
+    
       <InputBase
         placeholder="Reply to Chatbot"
         value={value}
@@ -121,11 +193,11 @@ const InputArea: React.FC<{ value: string; disabled:boolean, onChange: (e: strin
         fullWidth
         sx={{
           fontSize: "16px",
-          color: "#666", // Placeholder and text color
+          color: "#666", 
         }}
       />
 
-      {/* Send Button */}
+
       <IconButton
         onClick={onSend}
         disabled={disabled}
@@ -136,7 +208,6 @@ const InputArea: React.FC<{ value: string; disabled:boolean, onChange: (e: strin
         }}
       >
         <SvgIcon component={sendIcon} sx={{ color: "#666" }} />
-       
       </IconButton>
     </Box>
   );
