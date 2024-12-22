@@ -8,4 +8,5 @@ export type Conversation = {
     id: number;
     name: string;
     messages: Message[];
+    createdAt: string; 
 };

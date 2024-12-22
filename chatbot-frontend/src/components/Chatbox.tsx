@@ -11,10 +11,11 @@ import {
   CircularProgress,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { Message } from "../types/conversation";
+import { Conversation, Message } from "../types/conversation";
 
 import sendIcon from "../../public/send.svg";
 import TypingIndicator from "./TypingIndicator";
+import { formatDate } from "@/utils/formatDate";
 
 type ChatboxProps = {
   messages: Message[];
@@ -22,6 +23,7 @@ type ChatboxProps = {
   isBotTyping: boolean;
   onMenuClick: () => void;
   loading: boolean;
+  conversation?: Conversation | null;
 };
 
 const Chatbox: React.FC<ChatboxProps> = ({
@@ -30,6 +32,7 @@ const Chatbox: React.FC<ChatboxProps> = ({
   isBotTyping,
   onMenuClick,
   loading,
+  conversation
 }) => {
   const [input, setInput] = useState<string>("");
 
@@ -100,6 +103,17 @@ const Chatbox: React.FC<ChatboxProps> = ({
             </Box>
           ) : (
             <>
+            {conversation?.createdAt && (
+                <div className="flex justify-center my-4">
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    className="bg-gray-100 px-4 py-2 rounded-lg"
+                  >
+                     {formatDate(conversation.createdAt)}
+                  </Typography>
+                </div>
+              )}
               {messages.map((msg) => (
                 <div
                   key={msg.id}

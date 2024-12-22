@@ -7,6 +7,7 @@ import DeleteConfirmationDialog from "../components/DeleteConfirmationDialog";
 import { Conversation, Message } from "../types/conversation";
 import api from "../utils/api";
 import Header from "@/components/Header";
+import { create } from "domain";
 
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
@@ -29,7 +30,11 @@ export default function Home() {
       try {
         const response = await api.get<Conversation[]>("/conversations");
         setConversations(response.data);
-        if (response.data.length > 0) setSelectedConvId(response.data[0].id);
+        if (response.data.length > 0) {
+          setSelectedConvId(response.data[0].id);
+        } else {
+          addConversation();
+        }
       } catch (error) {
         console.error("Error fetching conversations:", error);
       } finally {
@@ -103,7 +108,6 @@ export default function Home() {
       try {
         await api.delete(`/conversations/${conversationToDelete}`);
 
-       
         delete messageCache.current[conversationToDelete];
 
         setConversations((prev) =>
@@ -127,7 +131,6 @@ export default function Home() {
           conversationId: selectedConvId,
         });
 
-        
         const updatedMessages = [
           ...(messageCache.current[selectedConvId] || []),
           response.data,
@@ -202,6 +205,7 @@ export default function Home() {
             isBotTyping={isBotTyping}
             onMenuClick={() => setDrawerOpen(true)}
             loading={loadingMessages && loadingConversations}
+            conversation={currentConversation}
           />
         </div>
       </div>

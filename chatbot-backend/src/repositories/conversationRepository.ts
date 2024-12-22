@@ -3,6 +3,9 @@ import prisma from "../models/prismaClient";
 export const getAllConversations = async () => {
   return prisma.conversation.findMany({
     include: { messages: true },
+    orderBy: {
+      createdAt: "desc",  
+    },
   });
 };
 
