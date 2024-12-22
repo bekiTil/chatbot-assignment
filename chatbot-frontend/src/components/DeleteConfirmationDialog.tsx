@@ -5,7 +5,6 @@ import {
   DialogContentText,
   DialogTitle,
   Button,
-  Box,
 } from "@mui/material";
 
 type DeleteConfirmationDialogProps = {

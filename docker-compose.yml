@@ -1,0 +1,17 @@
+version: "3.8"
+
+include:
+  - ./chatbot-backend/docker-compose.yml
+
+services:
+  frontend:
+    container_name: chatbot-frontend
+    build:
+      context: ./chatbot-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    

@@ -7,7 +7,6 @@ import DeleteConfirmationDialog from "../components/DeleteConfirmationDialog";
 import { Conversation, Message } from "../types/conversation";
 import api from "../utils/api";
 import Header from "@/components/Header";
-import { create } from "domain";
 
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
